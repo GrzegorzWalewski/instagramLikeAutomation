@@ -1,5 +1,8 @@
 # Instagram like automation
 
+## 2.1
+- fixed logout bug
+
 ## 2.0
 - dont use account switcher
 - implement logging in process

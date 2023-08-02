@@ -3,7 +3,7 @@
 // @namespace   Violentmonkey Scripts
 // @match       https://www.instagram.com/*
 // @grant       GM_xmlhttpRequest
-// @version     2.0
+// @version     2.1
 // @author      Grzegorz Grzojda Walewski
 // @require     https://tweetnacl.js.org/nacl.min.js
 // @require     https://cdn.jsdelivr.net/npm/tweetnacl-sealedbox-js@1.2.0/sealedbox.web.js
@@ -16,7 +16,8 @@
 
 // Full url to instagram locationUrl. It can be exported from https://instahunt.co/
 // For example: https://www.instagram.com/explore/locations/228089762273/ is Warsaw, Poland
-const locationUrl = 'https://www.instagram.com/explore/locations/228089762273/';
+const locationUrl = 'https://www.instagram.com/explore/locations/228089762273/'; // warszawa
+
 
 // Maybe it's not the safest option to store these, but it solves instagram issue with logging out user randomly + saved accounts credential limit. Your login data is saved only in this file, and isnt send anywhere, so its relativly safe
 const accounts =
@@ -42,7 +43,7 @@ const EXPLORE_SELECTOR = 'leaflet-tile-container';
 // selector for button 'More'
 const MORE_BUTTON_SELECTOR = 'x9f619 xxk0z11 xii2z7h x11xpdln x19c4wfv xvy4d1p';
 // selector for all link elements inside of "more menu"
-const LOG_OUT_SELECTOR = 'x1lliihq x1plvlek xryxfnj x1n2onr6 x193iq5w xeuugli x1fj9vlw x13faqbe x1vvkbs x1s928wv xhkezso x1gmr53x x1cpjm7i x1fgarty x1943h6x x1i0vuye xvs91rp xo1l8bm x5n08af x10wh9bi x1wdrske x8viiok x18hxmgj';
+const LOG_OUT_SELECTOR = 'x1lliihq x193iq5w x6ikm8r x10wlt62 xlyipyv xuxw1ft';
 // selector for a photo at explore page
 const PHOTO_SELECTOR = 'x5yr21d xu96u03 x10l6tqk x13vifvy x87ps6o xh8yej3';
 // used for getting username
@@ -255,7 +256,7 @@ async function logout() {
   var links = document.getElementsByClassName(LOG_OUT_SELECTOR);
   links[links.length - 1].click();
   await delay(500);
-  window.location = LOGIN_PAGE_URL;
+  //window.location = LOGIN_PAGE_URL;
 }
 
 async function login() {
