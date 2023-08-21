@@ -16,8 +16,10 @@
 
 // Full url to instagram locationUrl. It can be exported from https://instahunt.co/
 // For example: https://www.instagram.com/explore/locations/228089762273/ is Warsaw, Poland
-const locationUrl = 'https://www.instagram.com/explore/locations/228089762273/'; // warszawa
 
+//const locationUrl = 'https://www.instagram.com/explore/locations/228089762273/'; // warszawa
+const locationUrl = 'https://www.instagram.com/explore/locations/106017852771295/'; // poznan
+//const locationUrl = 'https://www.instagram.com/explore/locations/187752695320/'; // wroclaw
 
 // Maybe it's not the safest option to store these, but it solves instagram issue with logging out user randomly + saved accounts credential limit. Your login data is saved only in this file, and isnt send anywhere, so its relativly safe
 const accounts =
@@ -35,7 +37,7 @@ const maxLikes = 100;
 // selector for element existing only at logged out homepage
 const LOGGED_OUT_SELECTOR = 'xamitd3 xm2v1qs x322q5f xx54hvc x1vk3w4 xuyhj88 xod5an3 x1gja9t xcd7kps xkxfa8k';
 // text existing at login page - it can exist at logged out homepage, but shoud not exist at any other site
-const LOGIN_PAGE_TEXT = 'You can also report content you believe is unlawful in your country without logging in.';
+const LOGIN_PAGE_TEXT = 'Save login info';
 // login page direct link
 const LOGIN_PAGE_URL = 'https://www.instagram.com/accounts/login';
 // selector for element existing only at explore page
@@ -233,13 +235,19 @@ function getActiveUserUsername() {
 function getNextAccount() {
   console.log('getNextAccount');
   allProfiles = accounts;
+    console.log(allProfiles);
   for (var i = 0; i < allProfiles.length; i++) {
     var userData = LocalStorageManager.getFromLocalStorage(allProfiles[i].name);
-    if (userData == null || (Date.now() - userData.lastLikeTime) > (day)) {
+      console.log(userData);
+    if (userData == null || (Date.now() - userData.lastLikeTime) > (day) || userData.executionCount < maxLikes) {
       return allProfiles[i];
     }
   }
-  alert('It\'s enought for today. See You tomorrow');
+    document.title = 'It\'s enought for today. See You tomorrow';
+    document.body.innerHTML += '<audio id="chatAudio"><source src="https://cdn.pixabay.com/download/audio/2022/10/16/audio_10bebc0b9f.mp3" type="audio/mpeg"></audio>';
+    document.getElementById('chatAudio').play();
+
+    alert('It\'s enought for today. See You tomorrow');
   return false;
 }
 
@@ -256,7 +264,7 @@ async function logout() {
   var links = document.getElementsByClassName(LOG_OUT_SELECTOR);
   links[links.length - 1].click();
   await delay(500);
-  //window.location = LOGIN_PAGE_URL;
+  window.location = LOGIN_PAGE_URL;
 }
 
 async function login() {
@@ -347,31 +355,37 @@ async function likeProcedure() {
     count = userData.executionCount;
   }
 
-  var intervalId = window.setInterval(function () {
-    if (document.getElementsByClassName(PHOTO_BUTTONS_SELECTOR)[LIKE_BUTTON_INDEX].textContent == 'Like') {
-      if (document.getElementsByClassName(LIKE_AMOUNT_TEXT_SELECTOR)[0] === undefined) {
-        document.getElementsByClassName(PHOTO_BUTTONS_SELECTOR)[LIKE_BUTTON_INDEX].click();
-        count++;
-      } else if (document.getElementsByClassName(LIKE_AMOUNT_TEXT_SELECTOR)[0].querySelector('span') != null && document.getElementsByClassName(LIKE_AMOUNT_TEXT_SELECTOR)[0].querySelector('span').textContent < maxLikes) {
-        document.getElementsByClassName(PHOTO_BUTTONS_SELECTOR)[LIKE_BUTTON_INDEX].click();
-        count++;
-      }
-    }
+    while (count <= 300) {
+        if (document.getElementsByClassName(PHOTO_BUTTONS_SELECTOR)[LIKE_BUTTON_INDEX] != undefined && document.getElementsByClassName(PHOTO_BUTTONS_SELECTOR)[LIKE_BUTTON_INDEX].textContent == 'Like') {
+            if (document.getElementsByClassName(LIKE_AMOUNT_TEXT_SELECTOR)[0] === undefined)
+                {
+                    await clickLike();
+                    count++;
+                } else if (document.getElementsByClassName(LIKE_AMOUNT_TEXT_SELECTOR)[0].querySelector('span') != null && document.getElementsByClassName(LIKE_AMOUNT_TEXT_SELECTOR)[0].querySelector('span').textContent < maxLikes) {
+                    await clickLike();
+                    count++;
+                }
+            }
+            await nextPhoto();
+            LocalStorageManager.setToLocalStorage(username, {'executionCount': count, 'lastLikeTime': Date.now()});
+        getStats();
+            await delay(MAX_WAITING_TIME_BEFORE_NEXT/ 2);
+        }
+    logout();
+}
 
-    delay(2600).then(() => document.getElementsByClassName(NEXT_PREVIOUS_SHARE_BUTTONS_SELECTOR)[NEXT_BUTTON_INDEX].click());
+async function nextPhoto()
+{
+  delay(2600).then(() => document.getElementsByClassName(NEXT_PREVIOUS_SHARE_BUTTONS_SELECTOR)[NEXT_BUTTON_INDEX].click());
+}
 
-    LocalStorageManager.setToLocalStorage(username, { 'executionCount': count, 'lastLikeTime': Date.now() });
-
-    getStats();
-
-    if (count >= 300) {
-      logout();
-    }
-  }, Math.random() * MAX_WAITING_TIME_BEFORE_NEXT);
+async function clickLike()
+{
+  document.getElementsByClassName(PHOTO_BUTTONS_SELECTOR)[LIKE_BUTTON_INDEX].click();
 }
 
 
-function delay(time) {
+async function delay(time) {
   console.info('Waiting: ' + time / 1000 + ' seconds');
   return new Promise(resolve => setTimeout(resolve, time));
 }
@@ -393,7 +407,7 @@ class LocalStorageManager {
 function getStats() {
   var activeUser = getActiveUserUsername();
   var outputText = 'LOGGED IN AS:' + activeUser;
-  outputText += '\nAll accounts statistics:';
+    outputText += '\nAll accounts statistics:';
 
   allProfiles = accounts;
   if (allProfiles == null) {
@@ -417,6 +431,7 @@ function getStats() {
 
     outputText += "\n " + allProfiles[i].name + ": \n \t used likes: " + executionCount + "\n \t resets at: " + dateFormat + "\n";
   }
+  //console.clear()
   console.log(outputText);
 }
 
