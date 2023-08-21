@@ -21,14 +21,23 @@
 const locationUrl = 'https://www.instagram.com/explore/locations/106017852771295/'; // poznan
 //const locationUrl = 'https://www.instagram.com/explore/locations/187752695320/'; // wroclaw
 
+const locationsUrls = {
+  warsaw: "https://www.instagram.com/explore/locations/228089762273/",
+  poznan: "https://www.instagram.com/explore/locations/106017852771295/",
+  wroclaw: "https://www.instagram.com/explore/locations/187752695320/"
+}
+
+
 // Maybe it's not the safest option to store these, but it solves instagram issue with logging out user randomly + saved accounts credential limit. Your login data is saved only in this file, and isnt send anywhere, so its relativly safe
 const accounts =
   [
-    { name: "yourUsername", password: "yourPassword" }
+    { name: "yourUsername", password: "yourPassword", locations: ["poznan"] }
   ];
 
 // If photo have more then this, we'll just skip it ;)
 const maxLikes = 100;
+
+const maxExecutions = 300;
 
 /**
  * OTHER CONSTS IN CASE INSTAGRAM CHANGE ANYTHING, YOU CAN FIX IT HERE
@@ -232,6 +241,23 @@ function getActiveUserUsername() {
   return LocalStorageManager.getFromLocalStorage(LOCAL_STORAGE_ACTIVE_USER_INDEX);
 }
 
+
+function getNextLocationUrl()
+{
+  var activeUser = getActiveUserUsername();
+  var userData = LocalStorageManager.getFromLocalStorage(activeUser);
+
+  var changeEvery = maxExecutions / userData.locations.length;
+
+  if (userData.executionCount > changeEvery) {
+    locationIndex = Math.floor(userData.executionCount / changeEvery) - 1;
+  } else {
+    locationIndex = 0;
+  }
+
+  return locationsUrls[userData.locations[locationIndex]];
+}
+
 function getNextAccount() {
   console.log('getNextAccount');
   allProfiles = accounts;
@@ -239,7 +265,7 @@ function getNextAccount() {
   for (var i = 0; i < allProfiles.length; i++) {
     var userData = LocalStorageManager.getFromLocalStorage(allProfiles[i].name);
       console.log(userData);
-    if (userData == null || (Date.now() - userData.lastLikeTime) > (day) || userData.executionCount < maxLikes) {
+    if (userData == null || (Date.now() - userData.lastLikeTime) > (day) || userData.executionCount < maxExecutions) {
       return allProfiles[i];
     }
   }
@@ -348,6 +374,7 @@ async function likeProcedure() {
 
   await delay(4000);
 
+  var changeLocationEvery = maxExecutions / userData.locations.length;
   var count = 0;
   //get current user limit
   var userData = LocalStorageManager.getFromLocalStorage(username);
@@ -355,7 +382,7 @@ async function likeProcedure() {
     count = userData.executionCount;
   }
 
-    while (count <= 300) {
+    while (count <= changeLocationEvery) {
         if (document.getElementsByClassName(PHOTO_BUTTONS_SELECTOR)[LIKE_BUTTON_INDEX] != undefined && document.getElementsByClassName(PHOTO_BUTTONS_SELECTOR)[LIKE_BUTTON_INDEX].textContent == 'Like') {
             if (document.getElementsByClassName(LIKE_AMOUNT_TEXT_SELECTOR)[0] === undefined)
                 {
@@ -371,7 +398,11 @@ async function likeProcedure() {
         getStats();
             await delay(MAX_WAITING_TIME_BEFORE_NEXT/ 2);
         }
-    logout();
+        if (count <= 300) {
+          window.location = getNextLocationUrl();
+        } else {
+          logout();
+        }
 }
 
 async function nextPhoto()
