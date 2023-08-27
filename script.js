@@ -415,7 +415,7 @@ async function likeProcedure() {
             LocalStorageManager.setToLocalStorage(username, {'executionCount': count, 'lastLikeTime': Date.now()});
         getStats();
             await delay(MAX_WAITING_TIME_BEFORE_NEXT/ 2);
-        } while (count % changeLocationEvery != 0 && !firstLikeInLocation)
+        } while (count % changeLocationEvery != 0 || firstLikeInLocation)
         if (count <= 300) {
           window.location = getNextLocationUrl();
         } else {
