@@ -3,7 +3,7 @@
 // @namespace   Violentmonkey Scripts
 // @match       https://www.instagram.com/*
 // @grant       GM_xmlhttpRequest
-// @version     3.0
+// @version     2.2
 // @author      Grzegorz Grzojda Walewski
 // @require     https://tweetnacl.js.org/nacl.min.js
 // @require     https://cdn.jsdelivr.net/npm/tweetnacl-sealedbox-js@1.2.0/sealedbox.web.js
@@ -255,39 +255,26 @@ function getNextLocationUrl()
 {
   var activeUser = getActiveUser();
   var userData = LocalStorageManager.getFromLocalStorage(activeUser.name);
-    console.log('userData');
-    console.log(LocalStorageManager.getFromLocalStorage(activeUser.name));
-    console.log('executionsCount');
-    console.log(userData.executionCount);
 
   var changeEvery = Math.floor(maxExecutions / activeUser.locations.length);
     console.log('change every ' + changeEvery);
 
   if (userData.executionCount % changeEvery == 0) {
-      console.log(Math.floor(userData.executionCount / changeEvery));
     locationIndex = Math.floor(userData.executionCount / changeEvery);
       if (locationsUrls[activeUser.locations[locationIndex]] == undefined)
       {
           locationIndex = 0
-          console.log('x')
       }
   } else {
     locationIndex = 0;
-      console.log('arax')
   }
-console.log(userData.executionCount);
-    console.log(changeEvery);
-    console.log(locationIndex);
   return locationsUrls[activeUser.locations[locationIndex]];
 }
 
 function getNextAccount() {
-  console.log('getNextAccount');
   allProfiles = accounts;
-    console.log(allProfiles);
   for (var i = 0; i < allProfiles.length; i++) {
     var userData = LocalStorageManager.getFromLocalStorage(allProfiles[i].name);
-      console.log(userData);
     if (userData == null || (Date.now() - userData.lastLikeTime) > (day) || userData.executionCount < maxExecutions) {
       return allProfiles[i];
     }
@@ -418,21 +405,16 @@ async function likeProcedure() {
                     await clickLike();
                     count++;
                     firstLikeInLocation = false;
-                    console.log(count);
                 } else if (document.getElementsByClassName(LIKE_AMOUNT_TEXT_SELECTOR)[0].querySelector('span') != null && document.getElementsByClassName(LIKE_AMOUNT_TEXT_SELECTOR)[0].querySelector('span').textContent < maxLikes) {
                     await clickLike();
                     count++;
                     firstLikeInLocation = false;
-                    console.log(count);
                 }
             }
             await nextPhoto();
-        console.log(count);
             LocalStorageManager.setToLocalStorage(username, {'executionCount': count, 'lastLikeTime': Date.now()});
         getStats();
             await delay(MAX_WAITING_TIME_BEFORE_NEXT/ 2);
-        console.log(count); console.log(changeLocationEvery);
-        console.log("result: " + (count % changeLocationEvery));
         } while (count % changeLocationEvery != 0 && !firstLikeInLocation)
         if (count <= 300) {
           window.location = getNextLocationUrl();
@@ -498,7 +480,7 @@ function getStats() {
 
     outputText += "\n " + allProfiles[i].name + ": \n \t used likes: " + executionCount + '/' + maxExecutions + "\n \t resets at: " + dateFormat + "\n";
   }
-  //console.clear()
+  console.clear();
   console.log(outputText);
 }
 

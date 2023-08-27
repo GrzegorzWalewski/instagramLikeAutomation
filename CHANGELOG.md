@@ -1,7 +1,9 @@
 # Instagram like automation
 
-## 3.0
+## 2.2
 - added location auto switcher
+- removed console.log
+- uncommented console clear
 
 ## 2.1
 - fixed logout bug
