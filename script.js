@@ -3,7 +3,7 @@
 // @namespace   Violentmonkey Scripts
 // @match       https://www.instagram.com/*
 // @grant       GM_xmlhttpRequest
-// @version     2.1
+// @version     3.0
 // @author      Grzegorz Grzojda Walewski
 // @require     https://tweetnacl.js.org/nacl.min.js
 // @require     https://cdn.jsdelivr.net/npm/tweetnacl-sealedbox-js@1.2.0/sealedbox.web.js
@@ -30,13 +30,13 @@ const locationsUrls = {
 
 // Maybe it's not the safest option to store these, but it solves instagram issue with logging out user randomly + saved accounts credential limit. Your login data is saved only in this file, and isnt send anywhere, so its relativly safe
 const accounts =
-  [
-    { name: "yourUsername", password: "yourPassword", locations: ["poznan"] }
-  ];
+[
+  { name: "yourUsername", password: "yourPassword", locations: ["poznan", "warsaw", "wroclaw"] }
+];
 
 // If photo have more then this, we'll just skip it ;)
 const maxLikes = 100;
-
+// Max likes per day per account
 const maxExecutions = 300;
 
 /**
@@ -238,24 +238,47 @@ window.getCookie = function (name) {
 }
 
 function getActiveUserUsername() {
+  var user = LocalStorageManager.getFromLocalStorage(LOCAL_STORAGE_ACTIVE_USER_INDEX);
+  if (user != null)
+  {
+    return user.name;
+  }
+  return "";
+}
+
+function getActiveUser() {
   return LocalStorageManager.getFromLocalStorage(LOCAL_STORAGE_ACTIVE_USER_INDEX);
 }
 
 
 function getNextLocationUrl()
 {
-  var activeUser = getActiveUserUsername();
-  var userData = LocalStorageManager.getFromLocalStorage(activeUser);
+  var activeUser = getActiveUser();
+  var userData = LocalStorageManager.getFromLocalStorage(activeUser.name);
+    console.log('userData');
+    console.log(LocalStorageManager.getFromLocalStorage(activeUser.name));
+    console.log('executionsCount');
+    console.log(userData.executionCount);
 
-  var changeEvery = maxExecutions / userData.locations.length;
+  var changeEvery = Math.floor(maxExecutions / activeUser.locations.length);
+    console.log('change every ' + changeEvery);
 
-  if (userData.executionCount > changeEvery) {
-    locationIndex = Math.floor(userData.executionCount / changeEvery) - 1;
+  if (userData.executionCount % changeEvery == 0) {
+      console.log(Math.floor(userData.executionCount / changeEvery));
+    locationIndex = Math.floor(userData.executionCount / changeEvery);
+      if (locationsUrls[activeUser.locations[locationIndex]] == undefined)
+      {
+          locationIndex = 0
+          console.log('x')
+      }
   } else {
     locationIndex = 0;
+      console.log('arax')
   }
-
-  return locationsUrls[userData.locations[locationIndex]];
+console.log(userData.executionCount);
+    console.log(changeEvery);
+    console.log(locationIndex);
+  return locationsUrls[activeUser.locations[locationIndex]];
 }
 
 function getNextAccount() {
@@ -279,7 +302,7 @@ function getNextAccount() {
 
 async function logout() {
   console.log('logout');
-  LocalStorageManager.setToLocalStorage(LOCAL_STORAGE_ACTIVE_USER_INDEX, '');
+  LocalStorageManager.setToLocalStorage(LOCAL_STORAGE_ACTIVE_USER_INDEX, null);
   //click "more"
   await delay(3000);
   var links = document.getElementsByClassName(MORE_BUTTON_SELECTOR);
@@ -336,7 +359,7 @@ async function login() {
   if (authenticated != true) {
     alert(NON_AUTHENTICATED_MESSAGE);
   } else {
-    LocalStorageManager.setToLocalStorage(LOCAL_STORAGE_ACTIVE_USER_INDEX, account.name);
+    LocalStorageManager.setToLocalStorage(LOCAL_STORAGE_ACTIVE_USER_INDEX, account);
   }
   await delay(1500);
   location.reload()
@@ -365,6 +388,7 @@ async function likeProcedure() {
   await delay(4000);
 
   var username = getActiveUserUsername();
+  var activeUser = getActiveUser();
   if (username == '') {
     console.log('sth went wrong in active user assignment process, logging out');
     logout();
@@ -374,30 +398,42 @@ async function likeProcedure() {
 
   await delay(4000);
 
-  var changeLocationEvery = maxExecutions / userData.locations.length;
+
   var count = 0;
   //get current user limit
   var userData = LocalStorageManager.getFromLocalStorage(username);
+  if (userData == undefined) {
+    userData = {'executionCount': count, 'lastLikeTime': Date.now()};
+    LocalStorageManager.setToLocalStorage(username, userData);
+  }
+  var changeLocationEvery = Math.floor(maxExecutions / activeUser.locations.length);
   if (userData !== null && (Date.now() - userData.lastLikeTime) < (24 * 60 * 60 * 1000)) {
     count = userData.executionCount;
   }
-
-    while (count <= changeLocationEvery) {
+    var firstLikeInLocation = true;
+    do {
         if (document.getElementsByClassName(PHOTO_BUTTONS_SELECTOR)[LIKE_BUTTON_INDEX] != undefined && document.getElementsByClassName(PHOTO_BUTTONS_SELECTOR)[LIKE_BUTTON_INDEX].textContent == 'Like') {
             if (document.getElementsByClassName(LIKE_AMOUNT_TEXT_SELECTOR)[0] === undefined)
                 {
                     await clickLike();
                     count++;
+                    firstLikeInLocation = false;
+                    console.log(count);
                 } else if (document.getElementsByClassName(LIKE_AMOUNT_TEXT_SELECTOR)[0].querySelector('span') != null && document.getElementsByClassName(LIKE_AMOUNT_TEXT_SELECTOR)[0].querySelector('span').textContent < maxLikes) {
                     await clickLike();
                     count++;
+                    firstLikeInLocation = false;
+                    console.log(count);
                 }
             }
             await nextPhoto();
+        console.log(count);
             LocalStorageManager.setToLocalStorage(username, {'executionCount': count, 'lastLikeTime': Date.now()});
         getStats();
             await delay(MAX_WAITING_TIME_BEFORE_NEXT/ 2);
-        }
+        console.log(count); console.log(changeLocationEvery);
+        console.log("result: " + (count % changeLocationEvery));
+        } while (count % changeLocationEvery != 0 && !firstLikeInLocation)
         if (count <= 300) {
           window.location = getNextLocationUrl();
         } else {
@@ -460,7 +496,7 @@ function getStats() {
       executionCount = 0;
     }
 
-    outputText += "\n " + allProfiles[i].name + ": \n \t used likes: " + executionCount + "\n \t resets at: " + dateFormat + "\n";
+    outputText += "\n " + allProfiles[i].name + ": \n \t used likes: " + executionCount + '/' + maxExecutions + "\n \t resets at: " + dateFormat + "\n";
   }
   //console.clear()
   console.log(outputText);
