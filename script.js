@@ -17,10 +17,6 @@
 // Full url to instagram locationUrl. It can be exported from https://instahunt.co/
 // For example: https://www.instagram.com/explore/locations/228089762273/ is Warsaw, Poland
 
-//const locationUrl = 'https://www.instagram.com/explore/locations/228089762273/'; // warszawa
-const locationUrl = 'https://www.instagram.com/explore/locations/106017852771295/'; // poznan
-//const locationUrl = 'https://www.instagram.com/explore/locations/187752695320/'; // wroclaw
-
 const locationsUrls = {
   warsaw: "https://www.instagram.com/explore/locations/228089762273/",
   poznan: "https://www.instagram.com/explore/locations/106017852771295/",
@@ -100,7 +96,7 @@ async function init() {
     likeProcedure();
   } else {
     // any other page
-    window.location = locationUrl;
+    window.location = getNextLocationUrl();
   }
 }
 
