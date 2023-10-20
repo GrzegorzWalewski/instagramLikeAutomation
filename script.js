@@ -27,13 +27,11 @@ const locationsUrls = {
 // Maybe it's not the safest option to store these, but it solves instagram issue with logging out user randomly + saved accounts credential limit. Your login data is saved only in this file, and isnt send anywhere, so its relativly safe
 const accounts =
 [
-  { name: "yourUsername", password: "yourPassword", locations: ["poznan", "warsaw", "wroclaw"] }
+  { name: "yourUsername", password: "yourPassword", locations: ["poznan", "warsaw", "wroclaw"], maxExecutions: 300}
 ];
 
 // If photo have more then this, we'll just skip it ;)
 const maxLikes = 100;
-// Max likes per day per account
-const maxExecutions = 300;
 
 /**
  * OTHER CONSTS IN CASE INSTAGRAM CHANGE ANYTHING, YOU CAN FIX IT HERE
@@ -252,7 +250,7 @@ function getNextLocationUrl()
   var activeUser = getActiveUser();
   var userData = LocalStorageManager.getFromLocalStorage(activeUser.name);
 
-  var changeEvery = Math.floor(maxExecutions / activeUser.locations.length);
+  var changeEvery = Math.floor(userData.maxExecutions / activeUser.locations.length);
     console.log('change every ' + changeEvery);
 
   if (userData.executionCount % changeEvery == 0) {
@@ -273,7 +271,7 @@ function getNextAccount() {
   for (var i = 0; i < allProfiles.length; i++) {
     var userData = LocalStorageManager.getFromLocalStorage(allProfiles[i].name);
 
-    if (userData == null || (Date.now() - userData.lastLikeTime) > (day) || userData.executionCount < maxExecutions) {
+    if (userData == null || (Date.now() - userData.lastLikeTime) > (day) || userData.executionCount < userData.maxExecutions) {
       return allProfiles[i];
     }
 
@@ -396,7 +394,7 @@ async function likeProcedure() {
     userData = {'executionCount': count, 'lastLikeTime': Date.now()};
     LocalStorageManager.setToLocalStorage(username, userData);
   }
-  var changeLocationEvery = Math.floor(maxExecutions / activeUser.locations.length);
+  var changeLocationEvery = Math.floor(activeUser.maxExecutions / activeUser.locations.length);
   if (userData !== null && (Date.now() - userData.lastLikeTime) < (24 * 60 * 60 * 1000)) {
     count = userData.executionCount;
   }
@@ -481,7 +479,7 @@ function getStats() {
       executionCount = 0;
     }
 
-    outputText += "\n " + allProfiles[i].name + ": \n \t used likes: " + executionCount + '/' + maxExecutions + "\n \t resets at: " + dateFormat + "\n";
+    outputText += "\n " + allProfiles[i].name + ": \n \t used likes: " + executionCount + '/' + userData.maxExecutions + "\n \t resets at: " + dateFormat + "\n";
   }
   console.clear();
   console.log(outputText);

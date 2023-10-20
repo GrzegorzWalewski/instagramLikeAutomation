@@ -13,7 +13,7 @@ I made this code for my personal purposes. I know there are loads of other scrip
 You won't be noticed if you are one of a 1k, not talking about higher values.
 
 ## TO DO
-1. Likes limit per account (it's better to start with smaller limit)
+1. ~~Likes limit per account (it's better to start with smaller limit)~~
 2. Save recently liked accounts(per account), to avoid liking same profile if location is spammed by one account.
 3. ~~Show when script should be run next time instead of "enough for today" message.~~
 4. If possible (and won't end in performance issues) show message from **3.** as DOM element, and refresh page on the specified time
