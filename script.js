@@ -26,9 +26,9 @@ const locationsUrls = {
 
 // Maybe it's not the safest option to store these, but it solves instagram issue with logging out user randomly + saved accounts credential limit. Your login data is saved only in this file, and isnt send anywhere, so its relativly safe
 const accounts =
-[
-  { name: "yourUsername", password: "yourPassword", locations: ["poznan", "warsaw", "wroclaw"], maxExecutions: 300}
-];
+  [
+    { name: "yourUsername", password: "yourPassword", locations: ["poznan", "warsaw", "wroclaw"], maxExecutions: 300 }
+  ];
 
 // If photo have more then this, we'll just skip it ;)
 const maxLikes = 100;
@@ -59,11 +59,16 @@ const LIKE_AMOUNT_TEXT_SELECTOR = 'x193iq5w xeuugli x1fj9vlw x13faqbe x1vvkbs xt
 const PHOTO_BUTTONS_SELECTOR = 'x1i10hfl x6umtig x1b1mbwd xaqea5y xav7gou x9f619 xe8uvvx xdj266r x11i5rnm xat24cr x1mh8g0r x16tdsg8 x1hl2dhg xggy1nq x1a2a7pz x6s0dn4 xjbqb8w x1ejq31n xd10rxx x1sy0etr x17r0tee x1ypdohk x78zum5 xl56j7k x1y1aw1k x1sxyh0 xwib8y2 xurb0ha';
 // index for like button
 const LIKE_BUTTON_INDEX = 3;
+
 const NEXT_PREVIOUS_SHARE_BUTTONS_SELECTOR = '_abl-';
 const NEXT_BUTTON_INDEX = 1;
 const MAX_WAITING_TIME_BEFORE_NEXT = 15000;
+const MAX_POST_AUTHORS_SAVED = 300;
 const LOGIN_REQUEST_URL = 'https://www.instagram.com/api/v1/web/accounts/login/ajax/';
 const NON_AUTHENTICATED_MESSAGE = 'sth went wrong on loggining in, check console, and make sure You inputed right credentials';
+
+// selector for nickname of current loaded photo(post)
+const CURRENT_POST_AUTHOR_SELECTOR = 'x1i10hfl x1qjc9v5 xjbqb8w xjqpnuy xa49m3k xqeqjp1 x2hbi6w x13fuv20 xu3j5b3 x1q0q8m5 x26u7qi x972fbf xcfux6l x1qhh985 xm0m39n x9f619 x1ypdohk x78zum5 xdl72j9 xdt5ytf x2lah0s xe8uvvx xdj266r x11i5rnm xat24cr x1mh8g0r x2lwn1j xeuugli xexx8yu x4uap5 x18d9i69 xkhd6sd x1n2onr6 x16tdsg8 x1hl2dhg xggy1nq x1ja2u2z x1t137rt xnz67gz x14yjl9h xudhj91 x18nykt9 xww2gxu x9f619 x1lliihq x2lah0s x6ikm8r x10wlt62 x1n2onr6 x1ykvv32 xougopr x159fomc xnp5s1o x194ut8o x1vzenxt xd7ygy7 xt298gk x1xrz1ek x1s928wv x1n449xj x2q1x1w x1j6awrg x162n7g1 x1m1drc7 x1ypdohk x4gyw5p _a6hd';
 
 const LOCAL_STORAGE_ACTIVE_USER_INDEX = 'activeUser';
 
@@ -233,8 +238,7 @@ window.getCookie = function (name) {
 
 function getActiveUserUsername() {
   var user = LocalStorageManager.getFromLocalStorage(LOCAL_STORAGE_ACTIVE_USER_INDEX);
-  if (user != null)
-  {
+  if (user != null) {
     return user.name;
   }
   return "";
@@ -245,20 +249,18 @@ function getActiveUser() {
 }
 
 
-function getNextLocationUrl()
-{
+function getNextLocationUrl() {
   var activeUser = getActiveUser();
   var userData = LocalStorageManager.getFromLocalStorage(activeUser.name);
 
   var changeEvery = Math.floor(userData.maxExecutions / activeUser.locations.length);
-    console.log('change every ' + changeEvery);
+  console.log('change every ' + changeEvery);
 
   if (userData.executionCount % changeEvery == 0) {
     locationIndex = Math.floor(userData.executionCount / changeEvery);
-      if (locationsUrls[activeUser.locations[locationIndex]] == undefined)
-      {
-          locationIndex = 0
-      }
+    if (locationsUrls[activeUser.locations[locationIndex]] == undefined) {
+      locationIndex = 0
+    }
   } else {
     locationIndex = 0;
   }
@@ -279,12 +281,12 @@ function getNextAccount() {
       nextScriptExecutionTime = userData.lastLikeTime + day;
     }
   }
-    var nextScriptExecutionDate = new Date(nextScriptExecutionTime);
-    document.title = 'It\'s enought for today. See You tomorrow';
-    document.body.innerHTML += '<audio id="chatAudio"><source src="https://cdn.pixabay.com/download/audio/2022/10/16/audio_10bebc0b9f.mp3" type="audio/mpeg"></audio>';
-    document.getElementById('chatAudio').play();
+  var nextScriptExecutionDate = new Date(nextScriptExecutionTime);
+  document.title = 'It\'s enought for today. See You tomorrow';
+  document.body.innerHTML += '<audio id="chatAudio"><source src="https://cdn.pixabay.com/download/audio/2022/10/16/audio_10bebc0b9f.mp3" type="audio/mpeg"></audio>';
+  document.getElementById('chatAudio').play();
 
-    alert('Refrest this page at: ' + date.getHours() + ":" + date.getMinutes() + ", "+ date.toDateString());
+  alert('Refrest this page at: ' + date.getHours() + ":" + date.getMinutes() + ", " + date.toDateString());
   return false;
 }
 
@@ -386,51 +388,48 @@ async function likeProcedure() {
 
   await delay(4000);
 
-
   var count = 0;
   //get current user limit
   var userData = LocalStorageManager.getFromLocalStorage(username);
   if (userData == undefined) {
-    userData = {'executionCount': count, 'lastLikeTime': Date.now()};
+    userData = { 'executionCount': count, 'lastLikeTime': Date.now() };
     LocalStorageManager.setToLocalStorage(username, userData);
   }
   var changeLocationEvery = Math.floor(activeUser.maxExecutions / activeUser.locations.length);
   if (userData !== null && (Date.now() - userData.lastLikeTime) < (24 * 60 * 60 * 1000)) {
     count = userData.executionCount;
   }
-    var firstLikeInLocation = true;
-    do {
-        if (document.getElementsByClassName(PHOTO_BUTTONS_SELECTOR)[LIKE_BUTTON_INDEX] != undefined && document.getElementsByClassName(PHOTO_BUTTONS_SELECTOR)[LIKE_BUTTON_INDEX].textContent == 'Like') {
-            if (document.getElementsByClassName(LIKE_AMOUNT_TEXT_SELECTOR)[0] === undefined)
-                {
-                    await clickLike();
-                    count++;
-                    firstLikeInLocation = false;
-                } else if (document.getElementsByClassName(LIKE_AMOUNT_TEXT_SELECTOR)[0].querySelector('span') != null && document.getElementsByClassName(LIKE_AMOUNT_TEXT_SELECTOR)[0].querySelector('span').textContent < maxLikes) {
-                    await clickLike();
-                    count++;
-                    firstLikeInLocation = false;
-                }
-            }
-            await nextPhoto();
-            LocalStorageManager.setToLocalStorage(username, {'executionCount': count, 'lastLikeTime': Date.now()});
-        getStats();
-            await delay(MAX_WAITING_TIME_BEFORE_NEXT/ 2);
-        } while (count % changeLocationEvery != 0 || firstLikeInLocation)
-        if (count <= 300) {
-          window.location = getNextLocationUrl();
-        } else {
-          logout();
-        }
+  var firstLikeInLocation = true;
+  do {
+    var likeButtonExists = document.getElementsByClassName(PHOTO_BUTTONS_SELECTOR)[LIKE_BUTTON_INDEX] != undefined && document.getElementsByClassName(PHOTO_BUTTONS_SELECTOR)[LIKE_BUTTON_INDEX].textContent == 'Like';
+    var postHasZeroLikes = document.getElementsByClassName(LIKE_AMOUNT_TEXT_SELECTOR)[0] === undefined;
+    var likesAmmountUnderLimit = document.getElementsByClassName(LIKE_AMOUNT_TEXT_SELECTOR)[0].querySelector('span') != null && document.getElementsByClassName(LIKE_AMOUNT_TEXT_SELECTOR)[0].querySelector('span').textContent < maxLikes;
+    var postAuthor = document.getElementsByClassName(CURRENT_POST_AUTHOR_SELECTOR)[0].pathname;
+    var authorNotLikedLately = !wasLikedLately(username, postAuthor);
+
+    if (authorNotLikedLately && likeButtonExists && (postHasZeroLikes || likesAmmountUnderLimit)) {
+      await clickLike();
+      count++;
+      firstLikeInLocation = false;
+      addToRecentlyLiked(username, postAuthor);
+    }
+    await nextPhoto();
+    LocalStorageManager.setToLocalStorage(username, { 'executionCount': count, 'lastLikeTime': Date.now() });
+    getStats();
+    await delay(MAX_WAITING_TIME_BEFORE_NEXT / 2);
+  } while (count % changeLocationEvery != 0 || firstLikeInLocation)
+  if (count <= 300) {
+    window.location = getNextLocationUrl();
+  } else {
+    logout();
+  }
 }
 
-async function nextPhoto()
-{
+async function nextPhoto() {
   delay(2600).then(() => document.getElementsByClassName(NEXT_PREVIOUS_SHARE_BUTTONS_SELECTOR)[NEXT_BUTTON_INDEX].click());
 }
 
-async function clickLike()
-{
+async function clickLike() {
   document.getElementsByClassName(PHOTO_BUTTONS_SELECTOR)[LIKE_BUTTON_INDEX].click();
 }
 
@@ -457,7 +456,7 @@ class LocalStorageManager {
 function getStats() {
   var activeUser = getActiveUserUsername();
   var outputText = 'LOGGED IN AS:' + activeUser;
-    outputText += '\nAll accounts statistics:';
+  outputText += '\nAll accounts statistics:';
 
   allProfiles = accounts;
   if (allProfiles == null) {
@@ -485,3 +484,39 @@ function getStats() {
   console.log(outputText);
 }
 
+function wasLikedLately(username, postAuthor) {
+  var recentlyLiked = getRecentlyLiked(username);
+
+  if (recentlyLiked.includes(postAuthor)) {
+    return true;
+  }
+
+  return false;
+}
+
+function addToRecentlyLiked(username, postAuthor) {
+  var recentlyLiked = getRecentlyLiked(username);
+  recentlyLiked.push(postAuthor);
+
+  // remove oldest postAuthor
+  if (recentlyLiked.length > MAX_POST_AUTHORS_SAVED) {
+    recentlyLiked.shift();
+  }
+}
+
+function getRecentlyLiked(username) {
+  var userData = LocalStorageManager.getFromLocalStorage(username);
+
+  if (userData != null && userData.recentlyLiked != null) {
+    return userData.recentlyLiked;
+  }
+
+  return [];
+}
+
+function saveRecentlyLiked(username, recentlyLiked) {
+  var userData = LocalStorageManager.getFromLocalStorage(username);
+  userData.recentlyLiked = recentlyLiked;
+
+  LocalStorageManager.setToLocalStorage(username, userData);
+}
