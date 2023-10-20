@@ -269,17 +269,24 @@ function getNextLocationUrl()
 
 function getNextAccount() {
   allProfiles = accounts;
+  var nextScriptExecutionTime = 0;
   for (var i = 0; i < allProfiles.length; i++) {
     var userData = LocalStorageManager.getFromLocalStorage(allProfiles[i].name);
+
     if (userData == null || (Date.now() - userData.lastLikeTime) > (day) || userData.executionCount < maxExecutions) {
       return allProfiles[i];
     }
+
+    if (userData != null) {
+      nextScriptExecutionTime = userData.lastLikeTime + day;
+    }
   }
+    var nextScriptExecutionDate = new Date(nextScriptExecutionTime);
     document.title = 'It\'s enought for today. See You tomorrow';
     document.body.innerHTML += '<audio id="chatAudio"><source src="https://cdn.pixabay.com/download/audio/2022/10/16/audio_10bebc0b9f.mp3" type="audio/mpeg"></audio>';
     document.getElementById('chatAudio').play();
 
-    alert('It\'s enought for today. See You tomorrow');
+    alert('Refrest this page at: ' + date.getHours() + ":" + date.getMinutes() + ", "+ date.toDateString());
   return false;
 }
 
