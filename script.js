@@ -286,7 +286,7 @@ function getNextAccount() {
   document.body.innerHTML += '<audio id="chatAudio"><source src="https://cdn.pixabay.com/download/audio/2022/10/16/audio_10bebc0b9f.mp3" type="audio/mpeg"></audio>';
   document.getElementById('chatAudio').play();
 
-  alert('Refrest this page at: ' + date.getHours() + ":" + date.getMinutes() + ", " + date.toDateString());
+  alert('Refrest this page at: ' + nextScriptExecutionDate.getHours() + ":" + nextScriptExecutionDate.getMinutes() + ", " + nextScriptExecutionDate.toDateString());
   return false;
 }
 
