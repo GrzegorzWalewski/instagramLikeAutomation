@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name        XXXXX
+// @name        Instagram like automation
 // @namespace   Violentmonkey Scripts
 // @match       https://www.instagram.com/*
 // @grant       GM_xmlhttpRequest
@@ -20,9 +20,11 @@
 const locationsUrls = {
   warsaw: "https://www.instagram.com/explore/locations/228089762273/",
   poznan: "https://www.instagram.com/explore/locations/106017852771295/",
-  wroclaw: "https://www.instagram.com/explore/locations/187752695320/"
+  wroclaw: "https://www.instagram.com/explore/locations/187752695320/",
+  boleslawiec: "https://www.instagram.com/explore/locations/237333900/",
+  zgorzelec: "https://www.instagram.com/explore/locations/108144965872455",
+  jelenia: "https://www.instagram.com/explore/locations/112377815445943"
 }
-
 
 // Maybe it's not the safest option to store these, but it solves instagram issue with logging out user randomly + saved accounts credential limit. Your login data is saved only in this file, and isnt send anywhere, so its relativly safe
 const accounts =
@@ -61,7 +63,9 @@ const PHOTO_BUTTONS_SELECTOR = 'x1i10hfl x6umtig x1b1mbwd xaqea5y xav7gou x9f619
 // index for like button
 const LIKE_BUTTON_INDEX = 3;
 
-const NEXT_PREVIOUS_SHARE_BUTTONS_SELECTOR = '_abl-';
+const LOGGED_OUT_ON_EXPLORE_PAGE = ' _ab8q _ab8w  _ab94 _ab99 _ab9c _ab9h _ab9m _ab9p  _abbg _abby  _ab9- _abab _abcf _abcg _abci _abck _aa5t _abcm';
+
+const NEXT_PREVIOUS_SHARE_BUTTONS_SELECTOR = '[aria-label="Next"]';
 const NEXT_BUTTON_INDEX = 1;
 const MAX_WAITING_TIME_BEFORE_NEXT = 15000;
 const MAX_POST_AUTHORS_SAVED = 300;
@@ -87,20 +91,24 @@ async function init() {
   // keeping sure, document is loaded
   await delay(15000);
 
-  if (document.getElementsByClassName(LOGGED_OUT_SELECTOR).length > 0) {
-    // in instagram homepage and logged out
+  if (document.getElementsByClassName(LOGGED_OUT_SELECTOR).length > 0 || document.getElementsByClassName(LOGGED_OUT_ON_EXPLORE_PAGE).length > 0) {
+    //logged out
+    console.log('going to login page');
     window.location = LOGIN_PAGE_URL;
   } else if ((document.documentElement.textContent || document.documentElement.innerText
   ).indexOf(LOGIN_PAGE_TEXT) > -1 || (document.documentElement.textContent || document.documentElement.innerText
   ).indexOf(LOGIN_PAGE_TEXT_2) > -1) {
+    console.log('on login page, gonna login');
     // in instagram login page
     login();
   }
   else if (document.getElementsByClassName(EXPLORE_SELECTOR).length > 0) {
+    console.log('start like procedure');
     // in explore page
     likeProcedure();
   } else {
     // any other page
+    console.log('going to the next location url');
     window.location = getNextLocationUrl();
   }
 }
@@ -253,6 +261,9 @@ function getActiveUser() {
 
 function getNextLocationUrl() {
   var activeUser = getActiveUser();
+  if (activeUser == null) {
+    logout();
+  }
   var userData = LocalStorageManager.getFromLocalStorage(activeUser.name);
   var activeUserAccount = accounts.find(obj => obj.name === activeUser.name);
   var changeEvery = Math.floor(activeUserAccount.maxExecutions / activeUserAccount.locations.length);
@@ -271,7 +282,7 @@ function getNextLocationUrl() {
 
 function getNextAccount() {
   allProfiles = accounts;
-  var nextScriptExecutionTime = 0;
+  var nextScriptExecutionTime = Date.now() + day * 2;
   for (var i = 0; i < allProfiles.length; i++) {
     var userData = LocalStorageManager.getFromLocalStorage(allProfiles[i].name);
 
@@ -279,7 +290,7 @@ function getNextAccount() {
       return allProfiles[i];
     }
 
-    if (userData != null) {
+    if (userData != null && nextScriptExecutionTime > userData.lastLikeTime + day) {
       nextScriptExecutionTime = userData.lastLikeTime + day;
     }
   }
@@ -295,17 +306,29 @@ function getNextAccount() {
 async function logout() {
   console.log('logout');
   LocalStorageManager.setToLocalStorage(LOCAL_STORAGE_ACTIVE_USER_INDEX, null);
-  //click "more"
-  await delay(3000);
-  var links = document.getElementsByClassName(MORE_BUTTON_SELECTOR);
-  links[links.length - 1].click();
-
-  //click logout
-  await delay(3000);
-  var links = document.getElementsByClassName(LOG_OUT_SELECTOR);
-  links[links.length - 1].click();
-  await delay(500);
-  window.location = LOGIN_PAGE_URL;
+  let xhr = GM_xmlhttpRequest({
+    method: "POST",
+    url: "https://www.instagram.com/api/v1/web/accounts/logout/ajax/",
+    data: "one_tap_app_login=0&user_id=1522031065",
+    headers: {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/119.0",
+      "Accept": "*/*",
+      "Accept-Language": "en-US,en;q=0.7,pl;q=0.3",
+      'X-CSRFToken': window.getCookie('csrftoken'),
+      "X-Instagram-AJAX": "1009646321",
+      "X-IG-App-ID": "936619743392459",
+      "X-ASBD-ID": "129477",
+      "X-IG-WWW-Claim": "hmac.AR3Lf0lROTQxLpmT3V4bafp8WGA8Fym_F0peerVA9Soj9x9f",
+      "Content-Type": "application/x-www-form-urlencoded",
+      "X-Requested-With": "XMLHttpRequest",
+      "Sec-Fetch-Dest": "empty",
+      "Sec-Fetch-Mode": "cors",
+      "Sec-Fetch-Site": "same-origin"
+    },
+    onloadend: function () {
+      window.location = LOGIN_PAGE_URL;
+    }
+  });
 }
 
 async function login() {
@@ -345,16 +368,14 @@ async function login() {
     },
     onload: function (response) {
       authenticated = JSON.parse(response.response).authenticated;
+      if (authenticated != false) {
+        LocalStorageManager.setToLocalStorage(LOCAL_STORAGE_ACTIVE_USER_INDEX, account);
+      }
+    },
+    onloadend: function () {
+      location.reload();
     }
   });
-  await delay(4000);
-  if (authenticated != true) {
-    alert(NON_AUTHENTICATED_MESSAGE);
-  } else {
-    LocalStorageManager.setToLocalStorage(LOCAL_STORAGE_ACTIVE_USER_INDEX, account);
-  }
-  await delay(1500);
-  location.reload()
 }
 
 
@@ -408,8 +429,11 @@ async function likeProcedure() {
   do {
     var likeButtonExists = document.getElementsByClassName(PHOTO_BUTTONS_SELECTOR)[LIKE_BUTTON_INDEX] != undefined && document.getElementsByClassName(PHOTO_BUTTONS_SELECTOR)[LIKE_BUTTON_INDEX].textContent == 'Like';
     var postHasZeroLikesOrLikesAmmountUnderLimit = document.getElementsByClassName(LIKE_AMOUNT_TEXT_SELECTOR)[0] === undefined || (document.getElementsByClassName(LIKE_AMOUNT_TEXT_SELECTOR)[0].querySelector('span') != null && document.getElementsByClassName(LIKE_AMOUNT_TEXT_SELECTOR)[0].querySelector('span').textContent < maxLikes);
-    var postAuthor = document.getElementsByClassName(CURRENT_POST_AUTHOR_SELECTOR)[0].innerText;
-    var authorNotLikedLately = !wasLikedLately(username, postAuthor);
+    var authorNotLikedLately = true;
+    if (document.getElementsByClassName(CURRENT_POST_AUTHOR_SELECTOR)[0] !== undefined) {
+      var postAuthor = document.getElementsByClassName(CURRENT_POST_AUTHOR_SELECTOR)[0].innerText;
+      authorNotLikedLately = !wasLikedLately(username, postAuthor);
+    }
 
     if (authorNotLikedLately && likeButtonExists && postHasZeroLikesOrLikesAmmountUnderLimit) {
       await clickLike();
@@ -417,12 +441,16 @@ async function likeProcedure() {
       firstLikeInLocation = false;
       addToRecentlyLiked(username, postAuthor);
     }
-    await nextPhoto();
+    if (document.querySelector(NEXT_PREVIOUS_SHARE_BUTTONS_SELECTOR) != null) {
+      await nextPhoto();
+    } else {
+      window.location = getNextLocationUrl();
+    }
     saveExecutionCount(username, count, true);
     getStats();
     await delay(MAX_WAITING_TIME_BEFORE_NEXT / 2);
-  } while (count % changeLocationEvery != 0 || firstLikeInLocation)
-  if (count <= 300) {
+  } while ((count % changeLocationEvery != 0 || firstLikeInLocation) && count <= userData.maxExecutions)
+  if (count <= userData.maxExecutions) {
     window.location = getNextLocationUrl();
   } else {
     logout();
@@ -430,7 +458,7 @@ async function likeProcedure() {
 }
 
 async function nextPhoto() {
-  delay(2600).then(() => document.getElementsByClassName(NEXT_PREVIOUS_SHARE_BUTTONS_SELECTOR)[NEXT_BUTTON_INDEX].click());
+  delay(2600).then(() => document.querySelector(NEXT_PREVIOUS_SHARE_BUTTONS_SELECTOR).parentElement.click());
 }
 
 async function clickLike() {
