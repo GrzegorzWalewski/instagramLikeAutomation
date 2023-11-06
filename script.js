@@ -1,9 +1,9 @@
 // ==UserScript==
-// @name        XXXXX
+// @name        Instagram like automation
 // @namespace   Violentmonkey Scripts
 // @match       https://www.instagram.com/*
 // @grant       GM_xmlhttpRequest
-// @version     2.1
+// @version     2.2
 // @author      Grzegorz Grzojda Walewski
 // @require     https://tweetnacl.js.org/nacl.min.js
 // @require     https://cdn.jsdelivr.net/npm/tweetnacl-sealedbox-js@1.2.0/sealedbox.web.js
@@ -17,14 +17,19 @@
 // Full url to instagram locationUrl. It can be exported from https://instahunt.co/
 // For example: https://www.instagram.com/explore/locations/228089762273/ is Warsaw, Poland
 
-//const locationUrl = 'https://www.instagram.com/explore/locations/228089762273/'; // warszawa
-const locationUrl = 'https://www.instagram.com/explore/locations/106017852771295/'; // poznan
-//const locationUrl = 'https://www.instagram.com/explore/locations/187752695320/'; // wroclaw
+const locationsUrls = {
+  warsaw: "https://www.instagram.com/explore/locations/228089762273/",
+  poznan: "https://www.instagram.com/explore/locations/106017852771295/",
+  wroclaw: "https://www.instagram.com/explore/locations/187752695320/",
+  boleslawiec: "https://www.instagram.com/explore/locations/237333900/",
+  zgorzelec: "https://www.instagram.com/explore/locations/108144965872455",
+  jelenia: "https://www.instagram.com/explore/locations/112377815445943"
+}
 
 // Maybe it's not the safest option to store these, but it solves instagram issue with logging out user randomly + saved accounts credential limit. Your login data is saved only in this file, and isnt send anywhere, so its relativly safe
 const accounts =
   [
-    { name: "yourUsername", password: "yourPassword" }
+    { name: "yourUsername", password: "yourPassword", locations: ["poznan", "warsaw", "wroclaw"], maxExecutions: 300 }
   ];
 
 // If photo have more then this, we'll just skip it ;)
@@ -38,6 +43,7 @@ const maxLikes = 100;
 const LOGGED_OUT_SELECTOR = 'xamitd3 xm2v1qs x322q5f xx54hvc x1vk3w4 xuyhj88 xod5an3 x1gja9t xcd7kps xkxfa8k';
 // text existing at login page - it can exist at logged out homepage, but shoud not exist at any other site
 const LOGIN_PAGE_TEXT = 'Save login info';
+const LOGIN_PAGE_TEXT_2 = 'Don\'t have an account?';
 // login page direct link
 const LOGIN_PAGE_URL = 'https://www.instagram.com/accounts/login';
 // selector for element existing only at explore page
@@ -56,11 +62,18 @@ const LIKE_AMOUNT_TEXT_SELECTOR = 'x193iq5w xeuugli x1fj9vlw x13faqbe x1vvkbs xt
 const PHOTO_BUTTONS_SELECTOR = 'x1i10hfl x6umtig x1b1mbwd xaqea5y xav7gou x9f619 xe8uvvx xdj266r x11i5rnm xat24cr x1mh8g0r x16tdsg8 x1hl2dhg xggy1nq x1a2a7pz x6s0dn4 xjbqb8w x1ejq31n xd10rxx x1sy0etr x17r0tee x1ypdohk x78zum5 xl56j7k x1y1aw1k x1sxyh0 xwib8y2 xurb0ha';
 // index for like button
 const LIKE_BUTTON_INDEX = 3;
-const NEXT_PREVIOUS_SHARE_BUTTONS_SELECTOR = '_abl-';
+
+const LOGGED_OUT_ON_EXPLORE_PAGE = ' _ab8q _ab8w  _ab94 _ab99 _ab9c _ab9h _ab9m _ab9p  _abbg _abby  _ab9- _abab _abcf _abcg _abci _abck _aa5t _abcm';
+
+const NEXT_PREVIOUS_SHARE_BUTTONS_SELECTOR = '[aria-label="Next"]';
 const NEXT_BUTTON_INDEX = 1;
 const MAX_WAITING_TIME_BEFORE_NEXT = 15000;
+const MAX_POST_AUTHORS_SAVED = 300;
 const LOGIN_REQUEST_URL = 'https://www.instagram.com/api/v1/web/accounts/login/ajax/';
 const NON_AUTHENTICATED_MESSAGE = 'sth went wrong on loggining in, check console, and make sure You inputed right credentials';
+
+// selector for nickname of current loaded photo(post)
+const CURRENT_POST_AUTHOR_SELECTOR = 'x1lliihq x1plvlek xryxfnj x1n2onr6 x193iq5w xeuugli x1fj9vlw x13faqbe x1vvkbs x1s928wv xhkezso x1gmr53x x1cpjm7i x1fgarty x1943h6x x1i0vuye xvs91rp x1s688f x5n08af x10wh9bi x1wdrske x8viiok x18hxmgj';
 
 const LOCAL_STORAGE_ACTIVE_USER_INDEX = 'activeUser';
 
@@ -78,20 +91,25 @@ async function init() {
   // keeping sure, document is loaded
   await delay(15000);
 
-  if (document.getElementsByClassName(LOGGED_OUT_SELECTOR).length > 0) {
-    // in instagram homepage and logged out
+  if (document.getElementsByClassName(LOGGED_OUT_SELECTOR).length > 0 || document.getElementsByClassName(LOGGED_OUT_ON_EXPLORE_PAGE).length > 0) {
+    //logged out
+    console.log('going to login page');
     window.location = LOGIN_PAGE_URL;
   } else if ((document.documentElement.textContent || document.documentElement.innerText
-  ).indexOf(LOGIN_PAGE_TEXT) > -1) {
+  ).indexOf(LOGIN_PAGE_TEXT) > -1 || (document.documentElement.textContent || document.documentElement.innerText
+  ).indexOf(LOGIN_PAGE_TEXT_2) > -1) {
+    console.log('on login page, gonna login');
     // in instagram login page
     login();
   }
   else if (document.getElementsByClassName(EXPLORE_SELECTOR).length > 0) {
+    console.log('start like procedure');
     // in explore page
     likeProcedure();
   } else {
     // any other page
-    window.location = locationUrl;
+    console.log('going to the next location url');
+    window.location = getNextLocationUrl();
   }
 }
 
@@ -229,42 +247,88 @@ window.getCookie = function (name) {
 }
 
 function getActiveUserUsername() {
+  var user = LocalStorageManager.getFromLocalStorage(LOCAL_STORAGE_ACTIVE_USER_INDEX);
+  if (user != null) {
+    return user.name;
+  }
+  return "";
+}
+
+function getActiveUser() {
   return LocalStorageManager.getFromLocalStorage(LOCAL_STORAGE_ACTIVE_USER_INDEX);
 }
 
+
+function getNextLocationUrl() {
+  var activeUser = getActiveUser();
+  if (activeUser == null) {
+    logout();
+  }
+  var userData = LocalStorageManager.getFromLocalStorage(activeUser.name);
+  var activeUserAccount = accounts.find(obj => obj.name === activeUser.name);
+  var changeEvery = Math.floor(activeUserAccount.maxExecutions / activeUserAccount.locations.length);
+  console.log('change every ' + changeEvery);
+
+  if (userData != null && userData.executionCount % changeEvery == 0) {
+    locationIndex = Math.floor(userData.executionCount / changeEvery);
+    if (locationsUrls[activeUser.locations[locationIndex]] == undefined) {
+      locationIndex = 0
+    }
+  } else {
+    locationIndex = 0;
+  }
+  return locationsUrls[activeUser.locations[locationIndex]];
+}
+
 function getNextAccount() {
-  console.log('getNextAccount');
   allProfiles = accounts;
-    console.log(allProfiles);
+  var nextScriptExecutionTime = Date.now() + day * 2;
   for (var i = 0; i < allProfiles.length; i++) {
     var userData = LocalStorageManager.getFromLocalStorage(allProfiles[i].name);
-      console.log(userData);
-    if (userData == null || (Date.now() - userData.lastLikeTime) > (day) || userData.executionCount < maxLikes) {
+
+    if (userData == null || (Date.now() - userData.lastLikeTime) > (day) || userData.executionCount < userData.maxExecutions) {
       return allProfiles[i];
     }
-  }
-    document.title = 'It\'s enought for today. See You tomorrow';
-    document.body.innerHTML += '<audio id="chatAudio"><source src="https://cdn.pixabay.com/download/audio/2022/10/16/audio_10bebc0b9f.mp3" type="audio/mpeg"></audio>';
-    document.getElementById('chatAudio').play();
 
-    alert('It\'s enought for today. See You tomorrow');
+    if (userData != null && nextScriptExecutionTime > userData.lastLikeTime + day) {
+      nextScriptExecutionTime = userData.lastLikeTime + day;
+    }
+  }
+  var nextScriptExecutionDate = new Date(nextScriptExecutionTime);
+  document.title = 'It\'s enought for today. See You tomorrow';
+  document.body.innerHTML += '<audio id="chatAudio"><source src="https://cdn.pixabay.com/download/audio/2022/10/16/audio_10bebc0b9f.mp3" type="audio/mpeg"></audio>';
+  document.getElementById('chatAudio').play();
+
+  alert('Refrest this page at: ' + nextScriptExecutionDate.getHours() + ":" + nextScriptExecutionDate.getMinutes() + ", " + nextScriptExecutionDate.toDateString());
   return false;
 }
 
 async function logout() {
   console.log('logout');
-  LocalStorageManager.setToLocalStorage(LOCAL_STORAGE_ACTIVE_USER_INDEX, '');
-  //click "more"
-  await delay(3000);
-  var links = document.getElementsByClassName(MORE_BUTTON_SELECTOR);
-  links[links.length - 1].click();
-
-  //click logout
-  await delay(3000);
-  var links = document.getElementsByClassName(LOG_OUT_SELECTOR);
-  links[links.length - 1].click();
-  await delay(500);
-  window.location = LOGIN_PAGE_URL;
+  LocalStorageManager.setToLocalStorage(LOCAL_STORAGE_ACTIVE_USER_INDEX, null);
+  let xhr = GM_xmlhttpRequest({
+    method: "POST",
+    url: "https://www.instagram.com/api/v1/web/accounts/logout/ajax/",
+    data: "one_tap_app_login=0&user_id=1522031065",
+    headers: {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/119.0",
+      "Accept": "*/*",
+      "Accept-Language": "en-US,en;q=0.7,pl;q=0.3",
+      'X-CSRFToken': window.getCookie('csrftoken'),
+      "X-Instagram-AJAX": "1009646321",
+      "X-IG-App-ID": "936619743392459",
+      "X-ASBD-ID": "129477",
+      "X-IG-WWW-Claim": "hmac.AR3Lf0lROTQxLpmT3V4bafp8WGA8Fym_F0peerVA9Soj9x9f",
+      "Content-Type": "application/x-www-form-urlencoded",
+      "X-Requested-With": "XMLHttpRequest",
+      "Sec-Fetch-Dest": "empty",
+      "Sec-Fetch-Mode": "cors",
+      "Sec-Fetch-Site": "same-origin"
+    },
+    onloadend: function () {
+      window.location = LOGIN_PAGE_URL;
+    }
+  });
 }
 
 async function login() {
@@ -304,16 +368,14 @@ async function login() {
     },
     onload: function (response) {
       authenticated = JSON.parse(response.response).authenticated;
+      if (authenticated != false) {
+        LocalStorageManager.setToLocalStorage(LOCAL_STORAGE_ACTIVE_USER_INDEX, account);
+      }
+    },
+    onloadend: function () {
+      location.reload();
     }
   });
-  await delay(4000);
-  if (authenticated != true) {
-    alert(NON_AUTHENTICATED_MESSAGE);
-  } else {
-    LocalStorageManager.setToLocalStorage(LOCAL_STORAGE_ACTIVE_USER_INDEX, account.name);
-  }
-  await delay(1500);
-  location.reload()
 }
 
 
@@ -339,6 +401,7 @@ async function likeProcedure() {
   await delay(4000);
 
   var username = getActiveUserUsername();
+  var activeUser = getActiveUser();
   if (username == '') {
     console.log('sth went wrong in active user assignment process, logging out');
     logout();
@@ -351,36 +414,54 @@ async function likeProcedure() {
   var count = 0;
   //get current user limit
   var userData = LocalStorageManager.getFromLocalStorage(username);
+  var activeUserAccount = accounts.find(obj => obj.name === username);
+  if (userData == undefined) {
+    userData = { 'executionCount': count, 'lastLikeTime': Date.now(), 'maxExecutions': activeUserAccount.maxExecutions };
+  } else {
+    userData.maxExecutions = activeUserAccount.maxExecutions;
+  }
+  LocalStorageManager.setToLocalStorage(username, userData);
+  var changeLocationEvery = Math.floor(userData.maxExecutions / activeUser.locations.length);
   if (userData !== null && (Date.now() - userData.lastLikeTime) < (24 * 60 * 60 * 1000)) {
     count = userData.executionCount;
   }
+  var firstLikeInLocation = true;
+  do {
+    var likeButtonExists = document.getElementsByClassName(PHOTO_BUTTONS_SELECTOR)[LIKE_BUTTON_INDEX] != undefined && document.getElementsByClassName(PHOTO_BUTTONS_SELECTOR)[LIKE_BUTTON_INDEX].textContent == 'Like';
+    var postHasZeroLikesOrLikesAmmountUnderLimit = document.getElementsByClassName(LIKE_AMOUNT_TEXT_SELECTOR)[0] === undefined || (document.getElementsByClassName(LIKE_AMOUNT_TEXT_SELECTOR)[0].querySelector('span') != null && document.getElementsByClassName(LIKE_AMOUNT_TEXT_SELECTOR)[0].querySelector('span').textContent < maxLikes);
+    var authorNotLikedLately = true;
+    if (document.getElementsByClassName(CURRENT_POST_AUTHOR_SELECTOR)[0] !== undefined) {
+      var postAuthor = document.getElementsByClassName(CURRENT_POST_AUTHOR_SELECTOR)[0].innerText;
+      authorNotLikedLately = !wasLikedLately(username, postAuthor);
+    }
 
-    while (count <= 300) {
-        if (document.getElementsByClassName(PHOTO_BUTTONS_SELECTOR)[LIKE_BUTTON_INDEX] != undefined && document.getElementsByClassName(PHOTO_BUTTONS_SELECTOR)[LIKE_BUTTON_INDEX].textContent == 'Like') {
-            if (document.getElementsByClassName(LIKE_AMOUNT_TEXT_SELECTOR)[0] === undefined)
-                {
-                    await clickLike();
-                    count++;
-                } else if (document.getElementsByClassName(LIKE_AMOUNT_TEXT_SELECTOR)[0].querySelector('span') != null && document.getElementsByClassName(LIKE_AMOUNT_TEXT_SELECTOR)[0].querySelector('span').textContent < maxLikes) {
-                    await clickLike();
-                    count++;
-                }
-            }
-            await nextPhoto();
-            LocalStorageManager.setToLocalStorage(username, {'executionCount': count, 'lastLikeTime': Date.now()});
-        getStats();
-            await delay(MAX_WAITING_TIME_BEFORE_NEXT/ 2);
-        }
+    if (authorNotLikedLately && likeButtonExists && postHasZeroLikesOrLikesAmmountUnderLimit) {
+      await clickLike();
+      count++;
+      firstLikeInLocation = false;
+      addToRecentlyLiked(username, postAuthor);
+    }
+    if (document.querySelector(NEXT_PREVIOUS_SHARE_BUTTONS_SELECTOR) != null) {
+      await nextPhoto();
+    } else {
+      window.location = getNextLocationUrl();
+    }
+    saveExecutionCount(username, count, true);
+    getStats();
+    await delay(MAX_WAITING_TIME_BEFORE_NEXT / 2);
+  } while ((count % changeLocationEvery != 0 || firstLikeInLocation) && count <= userData.maxExecutions)
+  if (count <= userData.maxExecutions) {
+    window.location = getNextLocationUrl();
+  } else {
     logout();
+  }
 }
 
-async function nextPhoto()
-{
-  delay(2600).then(() => document.getElementsByClassName(NEXT_PREVIOUS_SHARE_BUTTONS_SELECTOR)[NEXT_BUTTON_INDEX].click());
+async function nextPhoto() {
+  delay(2600).then(() => document.querySelector(NEXT_PREVIOUS_SHARE_BUTTONS_SELECTOR).parentElement.click());
 }
 
-async function clickLike()
-{
+async function clickLike() {
   document.getElementsByClassName(PHOTO_BUTTONS_SELECTOR)[LIKE_BUTTON_INDEX].click();
 }
 
@@ -407,7 +488,7 @@ class LocalStorageManager {
 function getStats() {
   var activeUser = getActiveUserUsername();
   var outputText = 'LOGGED IN AS:' + activeUser;
-    outputText += '\nAll accounts statistics:';
+  outputText += '\nAll accounts statistics:';
 
   allProfiles = accounts;
   if (allProfiles == null) {
@@ -429,9 +510,57 @@ function getStats() {
       executionCount = 0;
     }
 
-    outputText += "\n " + allProfiles[i].name + ": \n \t used likes: " + executionCount + "\n \t resets at: " + dateFormat + "\n";
+    outputText += "\n " + allProfiles[i].name + ": \n \t used likes: " + executionCount + '/' + userData.maxExecutions + "\n \t resets at: " + dateFormat + "\n";
   }
-  //console.clear()
+  console.clear();
   console.log(outputText);
 }
 
+function wasLikedLately(username, postAuthor) {
+  var recentlyLiked = getRecentlyLiked(username);
+
+  if (recentlyLiked.includes(postAuthor)) {
+    return true;
+  }
+
+  return false;
+}
+
+function addToRecentlyLiked(username, postAuthor) {
+  var recentlyLiked = getRecentlyLiked(username);
+  recentlyLiked.push(postAuthor);
+
+  // remove oldest postAuthor
+  if (recentlyLiked.length > MAX_POST_AUTHORS_SAVED) {
+    recentlyLiked.shift();
+  }
+  saveRecentlyLiked(username, recentlyLiked);
+}
+
+function getRecentlyLiked(username) {
+  var userData = LocalStorageManager.getFromLocalStorage(username);
+
+  if (userData != null && userData.recentlyLiked != null) {
+    return userData.recentlyLiked;
+  }
+
+  return [];
+}
+
+function saveRecentlyLiked(username, recentlyLiked) {
+  var userData = LocalStorageManager.getFromLocalStorage(username);
+  userData.recentlyLiked = recentlyLiked;
+
+  LocalStorageManager.setToLocalStorage(username, userData);
+}
+
+function saveExecutionCount(username, executionCount, updateLastExecution) {
+  var userData = LocalStorageManager.getFromLocalStorage(username);
+  userData.executionCount = executionCount;
+
+  if (updateLastExecution) {
+    userData.lastLikeTime = Date.now();
+  }
+
+  LocalStorageManager.setToLocalStorage(username, userData);
+}
