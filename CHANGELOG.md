@@ -2,8 +2,11 @@
 
 ## 2.2
 - added location auto switcher
-- removed console.log
-- uncommented console clear
+- better console logs
+- show when script should be run again
+- maxExecutions per account instead of global limit
+- save latest 300 liked posts authors and skip them
+- logout via xhr request instead of clicking "logout button"
 
 ## 2.1
 - fixed logout bug
