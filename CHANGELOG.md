@@ -1,5 +1,8 @@
 # Instagram like automation
 
+## 2.3
+- fixed regex for encryption data
+
 ## 2.2
 - added location auto switcher
 - better console logs
