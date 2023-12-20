@@ -383,9 +383,10 @@ function getEncryptionData() {
   const scripts = document.querySelectorAll('script');
   let encryptionData = null;
   scripts.forEach(script => {
-    const regex = /\\"encryption\\":{\\"key_id\\":\\"(\d+)\\",\\"public_key\\":\\"([a-f0-9]+)\\",\\"version\\":\\"(\d+)\\"}/;
-    const match = script.innerHTML.match(regex);
-    if (match) {
+    const regex = /"key_id":"(\d+)","public_key":"([a-f0-9]+)","version":"(\d+)"/g;
+    const match = regex.exec(script.innerHTML);
+
+      if (match) {
       encryptionData = {
         key_id: match[1],
         public_key: match[2],
@@ -394,7 +395,7 @@ function getEncryptionData() {
     }
   });
   return encryptionData;
-}
+}ł
 
 async function likeProcedure() {
   console.log('likeProcedure');
