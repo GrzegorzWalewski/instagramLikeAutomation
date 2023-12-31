@@ -106,7 +106,11 @@ async function init() {
     console.log('start like procedure');
     // in explore page
     likeProcedure();
-  } else {
+  }
+  else if (document.querySelector('[aria-label="Dismiss"]') != undefined) {
+    document.querySelector('[aria-label="Dismiss"]').click();
+  }
+  else {
     // any other page
     console.log('going to the next location url');
     window.location = getNextLocationUrl();
@@ -386,7 +390,7 @@ function getEncryptionData() {
     const regex = /"key_id":"(\d+)","public_key":"([a-f0-9]+)","version":"(\d+)"/g;
     const match = regex.exec(script.innerHTML);
 
-      if (match) {
+    if (match) {
       encryptionData = {
         key_id: match[1],
         public_key: match[2],
@@ -395,7 +399,7 @@ function getEncryptionData() {
     }
   });
   return encryptionData;
-}ł
+}
 
 async function likeProcedure() {
   console.log('likeProcedure');

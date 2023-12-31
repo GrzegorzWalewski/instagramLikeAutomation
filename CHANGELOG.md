@@ -2,6 +2,7 @@
 
 ## 2.3
 - fixed regex for encryption data
+- autoclick on dismiss button when one appears
 
 ## 2.2
 - added location auto switcher
