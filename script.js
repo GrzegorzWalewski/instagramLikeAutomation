@@ -35,6 +35,9 @@ const accounts =
 // If photo have more then this, we'll just skip it ;)
 const maxLikes = 100;
 
+// sometimes phone verification is required. Provide phone number to which sms should be sent
+const phoneNumber = "yourPhoneNumber";
+
 /**
  * OTHER CONSTS IN CASE INSTAGRAM CHANGE ANYTHING, YOU CAN FIX IT HERE
  **/
@@ -88,6 +91,9 @@ init();
 
 async function init() {
   console.log('init');
+  Notification.requestPermission().then((result) => {
+    console.log(result);
+  });
   // keeping sure, document is loaded
   await delay(15000);
 
@@ -108,7 +114,44 @@ async function init() {
     likeProcedure();
   }
   else if (document.querySelector('[aria-label="Dismiss"]') != undefined) {
+    await delay(5000);
     document.querySelector('[aria-label="Dismiss"]').click();
+  }
+  else if (document.querySelector('[placeholder="Phone number"]') != undefined) {
+    await fetch("https://www.instagram.com/api/v1/challenge/web/action/", {
+      "credentials": "include",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0",
+        "Accept": "*/*",
+        "Accept-Language": "en-US,en;q=0.7,pl;q=0.3",
+        "Sec-GPC": "1",
+        "Sec-Fetch-Dest": "empty",
+        "Sec-Fetch-Mode": "no-cors",
+        "Sec-Fetch-Site": "same-origin",
+        "X-CSRFToken": "psKO7W7lwk3XODAsvhMmMGhPjmry9A8r",
+        "X-Instagram-AJAX": "1010621699",
+        "X-IG-App-ID": "936619743392459",
+        "X-ASBD-ID": "129477",
+        "X-IG-WWW-Claim": "hmac.AR1v_-G0wzXNAK2Z1O_x_lJezvjnOTwnHpb8c1MYP2SkT4T3",
+        "Content-Type": "application/x-www-form-urlencoded",
+        "X-Requested-With": "XMLHttpRequest",
+        "Pragma": "no-cache",
+        "Cache-Control": "no-cache"
+      },
+      "referrer": "https://www.instagram.com/challenge/?next=https%3A%2F%2Fwww.instagram.com%2Fexplore%2Flocations%2F106017852771295%2F%3F__coig_challenged%3D1",
+      "body": "challenge_context=Af5xttf3v8qtUB4WqRACgUXBA8vFJU8XwEVbbmtW9E_O-ctJUlQPB40nfbF4I_hk0ZZK-W3GSQfxdKkvR2B2CpoanUl0X95eESd7jGChLF8yiLjkbUaBvaehIbv_LIU5pQhhLSntmCAX35tEsWTV2D5xGqh7gKAGSQpK0FHGig1ZgndmVXLfFLEDaLRK64JH_03c3LjZL3&phone_number=" + phoneNumber + "&next=https%3A%2F%2Fwww.instagram.com%2Fexplore%2Flocations%2F106017852771295%2F%3F__coig_challenged%3D1",
+      "method": "POST",
+      "mode": "cors"
+    });
+    await delay(5000);
+    window.location = INSTAGRAM_DOMAIN;
+  } else if (document.querySelector('[placeholder="Enter Code"]') != undefined) {
+    var text = 'Insert code you received at Your phone (' + phoneNumber + ')';
+    var notification = new Notification("INSTAGRAM BOT", { body: text, icon: "https://github.com/GrzegorzWalewski/instagramLikeAutomation/assets/25950627/63da9fc7-f092-4ad1-ae83-8e7cfdb3b165", requireInteraction: true });
+
+    notification.onerror = function (event) {
+      alert(text);
+    };
   }
   else {
     // any other page
