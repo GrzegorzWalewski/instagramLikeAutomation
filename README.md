@@ -1,5 +1,9 @@
-# instagramLikeAutomation
+<h1 style="display: flex; align-items: center;">
+  <img src="https://github.com/GrzegorzWalewski/instagramLikeAutomation/assets/25950627/63da9fc7-f092-4ad1-ae83-8e7cfdb3b165" alt="icon" style="width: 100px; height: 100px; margin-right: 10px;">
+  instagramLikeAutomation 
+</h1>
 Instagram Auto liker, with account switcher 2023
+
 
 ## Notice
 I made this code for my personal purposes. I know there are loads of other scripts like that, but I had my preferences.
