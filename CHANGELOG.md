@@ -1,5 +1,10 @@
 # Instagram like automation
 
+## 2.4
+- added delay for clicking delay button
+- added post fetch for phone verification
+- added notification/alert for sms code insert
+
 ## 2.3
 - fixed regex for encryption data
 - autoclick on dismiss button when one appears
